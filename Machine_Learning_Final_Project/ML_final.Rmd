@@ -1,0 +1,138 @@
+---
+title: "Practical Machine Learning Project - Human Activity Recognition"
+author: "Michele Ronco"
+date: "3/29/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 
+
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+# Downloding dataset
+
+## Load useful packages
+
+
+```{r packages}
+library(caret)
+library(rpart)
+library(randomForest)
+```
+
+## Training and testing dataset 
+
+```{r dataset}
+fileUrl1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(fileUrl1,destfile = "train.csv",method="curl")
+training <- read.csv("train.csv")
+
+fileUrl2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(fileUrl2,destfile = "test.csv",method="curl")
+testing <- read.csv("test.csv")
+```
+
+---
+#First look at dataset 
+
+
+# ```{r data}
+# dim(training)
+# names(training)
+# head(training,2)
+
+# names(testing)
+# dim(testing)
+# head(testing,2)
+# ```
+---
+
+# Data cleaning and subsetting for cross validation 
+
+```{r clean}
+training<-training[,colSums(is.na(training)) == 0]
+training <- training[,c(8:93)]
+testing <-testing[,colSums(is.na(testing)) == 0]
+testing <- testing[,c(8:59)]
+inTrain <- createDataPartition(y=training$classe,p=0.6,list=FALSE)
+subtrain <- training[inTrain,]
+subtest <- training[-inTrain,]
+subsubtrain <- subtrain[,!is.na(sapply(subtrain,mean))]
+subsubtrain $ classe <- subtrain $ classe
+dim(subsubtrain)
+```
+
+## Building my Machine Learning Model 
+
+---
+#Recursive Partitioning And Regression Trees
+
+#First model:
+
+# ```{r model1}
+# model1 <- rpart(classe ~ ., data=subsubtrain, method="class")
+# prediction1 <- predict(model1, subtest, type = "class")
+# ```
+
+# Let's plot predictions obtained with model1 versus real values in test subset: 
+
+# ```{r plot1}
+# qplot(classe, prediction1, data=subtest, geom = c("boxplot", "jitter"), main = #"predicted vs. observed in validation data", xlab = "Observed Classe", ylab = "Predicted #Classe")
+#```
+
+#Finally, we compute the confusion matrix to get accuracy and other statistic estimators:
+
+#```{r cm1}
+#confusionMatrix(prediction1,subtest$classe)
+#```
+
+#Model1 has a 74.43 % accuracy and 0.2557 out-of-sample error, let's try a random forest #model to improve the predictive power of our model. 
+---
+
+# Classification And Regression With Random Forest
+
+Second model: 
+
+```{r model2}
+model2 <- randomForest(classe ~ ., data=subsubtrain, method="class")
+prediction2 <- predict(model2, subtest, type = "class")
+```
+
+Let's plot predictions obtained with model2 versus real values in test subset: 
+
+```{r plot2}
+qplot(classe, prediction2, data=subtest, geom = c("boxplot", "jitter"), main = "predicted vs. observed in validation data", xlab = "Observed Classe", ylab = "Predicted Classe")
+```
+
+The curve is almost a straight line at 45 degrees and thus model2 has a very good performance. We then expect a small out-of-sample error. 
+
+Finally, we compute the confusion matrix to get accuracy and other statistic estimators:
+
+```{r cm2}
+confusionMatrix(prediction2,subtest$classe)
+```
+
+Model2 performs much better, with a 99.39 % accuracy and 0.0061 out-of-sample error. 
+
+## Predictions over 20 test cases with model2
+
+```{r pred}
+prediction <- predict(model2, testing, type="class")
+prediction
+```
+
+
+## Comments
+
+Only one model (the most accurate one) has been included in the html file in order to lighten the file size in terms of memory and make it visible to reviewers. 
+
+
